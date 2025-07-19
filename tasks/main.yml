@@ -1,7 +1,7 @@
 ---
 #####
 #
-# @name MyINFRA.eu ~ Ansible <name> Role
+# @name MyINFRA.eu ~ Ansible Show Output Role
 # @version 2025.07.001
 # @since 2025.07.001
 #
@@ -11,7 +11,7 @@
 #
 ###
 #
-# Ansible role for <description>
+# Ansible role to show debug output and/or send telegram messages.
 #
 #####
 
@@ -19,12 +19,39 @@
   ansible.builtin.debug:
     msg:
       - "MyINFRA.eu ~ Ansible <name> Role"
-      - "Version   : {{ myinfra.<name>.version }}"
+      - "Version   : {{ myinfra.show_output.version }}"
       - "Copyright : (c) 2025 (and beyond) - Dennis de Houx, All In One, One For The code"
       - "Author    : Dennis de Houx <dennis@dehoux.be>"
       - "License   : https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en CC BY-NC-ND 4.0"
 
-- name: "Load: Gather facts tasks"
-  ansible.builtin.import_tasks: gather.yml
-  tags:
-    - <short_name>_gather_facts
+- name: "SHOW OUTPUT > Messages"
+  ansible.builtin.debug:
+    msg:
+      - "{{ message_role }}: {{ message_data }}"
+  loop: "{{ myinfra_show_data | default({}) | dict2items }}"
+  vars:
+    message_role: "{{ item.key }}"
+    message_data: "{{ item.value }}"
+  when:
+    - message_data | length > 0
+    - myinfra_show_data is defined and myinfra_show_data | length > 0
+    - show_output.messages is defined and show_output.messages is true
+
+- name: "SHOW OUTPUT > Send telegram messages"
+  community.general.telegram:
+    token: "{{ show_output.telegram.token }}"
+    api_method: "SendMessage"
+    api_arg:
+      chat_id: "{{ show_output.telegram.chat_id }}"
+      parse_mode: "markdown"
+      text: "{{ message_role }}: {{ message_data }}"
+      disable_web_page_preview: true
+      disable_notification: true
+  loop: "{{ myinfra_show_data | default({}) | dict2items }}"
+  vars:
+    message_role: "{{ item.key }}"
+    message_data: "{{ item.value }}"
+  when:
+    - message_data | length > 0
+    - myinfra_show_data is defined and myinfra_show_data | length > 0
+    - show_output.telegram.token is defined and show_output.telegram.token | length > 0
